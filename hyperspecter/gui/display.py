@@ -8,46 +8,48 @@ pg.setConfigOptions(imageAxisOrder='row-major')
 
 class ImageItem(pg.ImageItem):
     ''' ImageItem with modified mouse click event which prints and stores the location of the cursor click position. '''
-    def __init__(self):
+    def __init__(self, channel):
         super().__init__()
+        self.channel = channel
         self.click_position = None
 
     def mouseClickEvent(self, event):
-        self.click_position = int(event.pos().x()), int(event.pos().y()) # returns clicked pixel's location as integer coordinates
-        print(self.click_position)  # TODO: replace with sprite at click position
-        # return self.click_position
+        self.click_position = int(event.pos().x()), int(event.pos().y()) # returns clicked pixel's channel and location as integer coordinates
+        return self.click_position
 
 
 # TODO : show intensity number and more basic qt label based on autoalign
 class DisplayPanel(pg.GraphicsLayoutWidget):
     
     class Signal(QtCore.QObject):
+        resize = QtCore.pyqtSignal()
         update = QtCore.pyqtSignal()
         close  = QtCore.pyqtSignal()
-        
-    __title  = "Hyperspecter - Display Panel 2022"
 
-    def __init__(self, number_of_channels, parent=None):
+    signal = Signal()
+        
+    __title  = "Hyperspecter - Display Panel"
+
+    def __init__(self, number_of_channels, channel_labels=None, parent=None):
         ''' DisplayPanel displays a panel of microscope images where each column represents a different input channel.
             DisplayPanel inherits from the convenience class GraphicsLayoutWidget which combines a GraphicsView and GraphicsLayout.
 
             Attributes : 
                 number_of_channels (int): the number of channels to be displayed
+                channel_labels (list): list of labels for each channel. The length must match the number of channels. Use None or '' for null/unknown values. 
                 simulate (bool): simulate data as noise
                 parent (object): the object which invoked the display panel
     '''
         super().__init__()
+        if channel_labels: assert len(channel_labels) == number_of_channels
         self.number_of_channels = number_of_channels
+        self.channel_labels = channel_labels
         self.parent = parent
-        
         self.images = []
         self.plots = []
         self.image_levels = []
         self.default_image_minimum = 0
         self.default_image_maximum = 1
-        self.click_position = None
-        self.signal = self.Signal()
-
         self.image_data = None
 
         self.setupUI()
@@ -58,31 +60,47 @@ class DisplayPanel(pg.GraphicsLayoutWidget):
     def setupUI(self):
         self.setWindowTitle(self.__title)
         self.resize(400*self.number_of_channels, 525)
-        layout = self.ci.layout # layout is an instance of QGraphicsGridLayout
-        layout.setRowStretchFactor(1, 10) # stretches out the image row so that the images appear larger
-        layout.setRowStretchFactor(2,  1) # maintains size of the plots
+        self.layout = self.ci.layout # layout is an instance of QGraphicsGridLayout
+        self.layout.setRowStretchFactor(1, 10) # stretches out the image row so that the images appear larger
+        self.layout.setRowStretchFactor(2,  1) # maintains size of the plots
+        self.layout.setHorizontalSpacing(25)
 
-        for i in range(self.number_of_channels):
+        for channel in range(self.number_of_channels):
             # Add labels
-            self.addLabel(f'CH{i}', row=0, col=i)
+            label = f'CH{channel}'
+            if self.channel_labels:
+                label += f' : {self.channel_labels[channel]}'   
+            self.addLabel(label, row=0, col=channel)
 
             # Add empty images
-            vb = self.addViewBox(row=1, col=i)
+            vb = self.addViewBox(row=1, col=channel)
             vb.setAspectLocked()
             vb.setMouseEnabled(x=False, y=False)
-            image = ImageItem()
+            image = ImageItem(channel)
             vb.addItem(image)
             self.images.append(image)
             self.image_levels.append((self.default_image_minimum,self.default_image_maximum))
             
             # Add empty plots
-            plot = self.addPlot(row=2, col=i)
+            plot = self.addPlot(row=2, col=channel)
             plot.setMouseEnabled(x=False, y=False)
             self.plots.append(plot.plot()) # Initializes plot so it can be updated later
 
+        self.rescale()
+
     def setupSignals(self):
         ''' Connects signals to slots. '''
-        pass
+        self.signal.resize.connect(self.rescale)
+
+    def resizeEvent(self, event):
+        self.signal.resize.emit()
+        return super().resizeEvent(event)
+
+    def rescale(self):
+        width = self.frameGeometry().width()/self.number_of_channels - self.layout.horizontalSpacing()
+        # print(width)
+        for channel in range(self.number_of_channels):
+            self.layout.setColumnFixedWidth(channel, width)
 
     def setImage(self, image_data, image_minimums=None, image_maximums=None):
         ''' Sets the image.
@@ -119,19 +137,6 @@ class DisplayPanel(pg.GraphicsLayoutWidget):
             else:
                 self.plots[channel].setData(intensity_data[channel])
 
-    # def update(self, image_data, image_maximums=None, image_minimums=None, intensity_data=None, wavenumbers=None):
-    #     ''' Sets the image and intensity plot to 
-
-    #         INPUT :
-    #             image_data = 3D array containing the image data for each channel having type [channel,y,x]
-    #             image_maximums = 1D array containing maximum image intensities to be displayed for image levelling
-    #             image_minimums = 1D array containing minimum image intensities to be displayed for image levelling
-    #             intensity_data = 2D array containing the average image intensity for any previous images having type [channel,intensity]
-    #             wavenumbers = 2D array containing the wavenumbers to associate with each value in intensity_data having type [channel,wavenumber]
-    #     '''
-    #     self.set_image(image_data, image_minimums, image_maximums)
-    #     self.set_intensity_plot(intensity_data, wavenumbers)
-
     def setDefaultImageLevels(self, minimum=0, maximum=1):
         self.default_image_minimum = minimum
         self.default_image_maximum = maximum
@@ -162,63 +167,14 @@ class DisplayPanel(pg.GraphicsLayoutWidget):
         self.signal.close.emit()
         event.accept()
 
-
-class TestDisplayPanel(pg.GraphicsLayoutWidget):
-    def __init__(self):
-        super().__init__()
         
-        self.image_data = []
-        self.number_of_channels = 2
-        self.images = []
-        self.plots = []
-        
-        self.initUI()
-        self.update_data()
-        
-        self.activateWindow()
-        self.show()
-
-    def initUI(self):
-
-        self.setWindowTitle('Test Canvas')
-
-        self.layout = self.ci.layout # layout is an instance of QGraphicsGridLayout
-        self.layout.setRowStretchFactor(1, 10) # stretches out the image row so that the images appear larger
-        self.layout.setRowStretchFactor(2, 1)
-
-        self.resize(400*self.number_of_channels, 525)
-
-        for channel in range(self.number_of_channels):
-            self.layout.setColumnStretchFactor(channel, 1)
-
-            self.addLabel(f'CH{channel}', row=0, col=channel, colspan=1)
-
-            vb = self.addViewBox(row=1, col=channel, colspan=1)
-            vb.setAspectLocked()
-            vb.setMouseEnabled(x=False, y=False)
-            image = ImageItem()
-            vb.addItem(image)
-            self.images.append(image)
-            
-
-            plot = self.addPlot(row=2, col=channel, colspan=1)
-            plot.setMouseEnabled(x=False, y=False)
-            self.plots.append(plot.plot()) # Initializes plot so it can be updated later
-
-    def update_data(self):
-        for channel in range(self.number_of_channels):
-            # Plot random data
-            self.images[channel].setImage(np.random.randn(50, 50))
-            self.plots[channel].setData(np.random.random(50)*2000)
-        
-        
-        
-
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication([])
-    # test_display_panel = TestDisplayPanel()
-    display_panel = DisplayPanel(2)
-    display_panel.setImage(np.random.randn(2,50,50))
-    display_panel.setIntensityPlot(np.random.randn(2,100))
+    channels = 4
+    labels = ['CARS', 'E-CARS', 'TPEF', 'SHG']
+    resolution = 250
+    display_panel = DisplayPanel(channels, labels)
+    display_panel.setImage(np.random.randn(channels,resolution,resolution))
+    display_panel.setIntensityPlot(np.random.randn(channels,100))
     app.exec_()
