@@ -40,15 +40,15 @@ class Hyperspecter:
         self.settings = self.gui.getSettings()
         self.microscope = MicroscopeController()
         
-        self.config = {}
-        self.config = utils.load_config(f'{self.path}/default_config.ini')
-        # self.save_config('test.ini', self.config)
-        
         delay_name = 'DDS220'
         delay_serial_number = stages[delay_name]['SN']
         delay_hwtype = stages[delay_name]['HW']
         self.delay_stage = Stage(delay_serial_number, delay_hwtype, name=delay_name)
-
+        
+        self.config = {}
+        self.config = utils.load_config(f'{self.path}/default_config.ini')
+        # self.save_config('test.ini', self.config)
+        
         
         '''
         Coefficients of the polynomials used for calibration.
@@ -94,6 +94,11 @@ class Hyperspecter:
         self.gui.ui.PMTSlider1.valueChanged.connect(lambda: self.set_PMT_level(self.gui.ui.PMTSlider1.value(), 1))
         self.gui.ui.PMTSlider2.valueChanged.connect(lambda: self.set_PMT_level(self.gui.ui.PMTSlider2.value(), 2))
         self.gui.ui.PMTSlider3.valueChanged.connect(lambda: self.set_PMT_level(self.gui.ui.PMTSlider3.value(), 3))
+
+        # Delay stage position buttons
+        self.gui.ui.delayStagePresetButton0.clicked.connect(lambda: self.delay_stage.move_abs(self.gui.ui.delayStagePresetWidget0.value()))
+        self.gui.ui.delayStagePresetButton1.clicked.connect(lambda: self.delay_stage.move_abs(self.gui.ui.delayStagePresetWidget1.value()))
+        self.gui.ui.delayStagePresetButton2.clicked.connect(lambda: self.delay_stage.move_abs(self.gui.ui.delayStagePresetWidget2.value()))
 
     def gui_closed(self):
         # Stop everything
@@ -325,7 +330,7 @@ class Hyperspecter:
         # Update settings
         self.settings = self.gui.getSettings()
 
-        # Update estimated scan and calibration times
+        # Update estimated scan times
         scan_time = utils.estimate_imaging_time(
             self.settings['scan start'],
             self.settings['scan end'],
@@ -333,6 +338,24 @@ class Hyperspecter:
             self.settings['line dwell time'] * self.settings['image resolution'] / 1000
         )
         self.gui.ui.estimatedScanTimeLabel.setText(f'Estimated Scan Time: {scan_time} seconds')
+
+        scan_time = utils.estimate_imaging_time(
+            self.settings['polarization scan start'],
+            self.settings['polarization scan end'],
+            self.settings['polarization step size'],
+            self.settings['line dwell time'] * self.settings['image resolution'] / 1000
+        )
+        self.gui.ui.estimatedPolarizationScanTimeLabel.setText(f'Estimated Scan Time: {scan_time} seconds')
+
+        # Update current delay stage position
+        delay_position = self.delay_stage.get_position()
+        wavenumber = np.polyval(self.delay_to_wavenumber, delay_position)
+        self.gui.ui.delayStagePosition.setText(f'{delay_position:.3f} mm ({wavenumber:.0f} cm-1)')
+
+        # Update preset values
+        self.gui.ui.delayStagePreset0.setText(f'{np.polyval(self.delay_to_wavenumber, self.gui.ui.delayStagePresetWidget0.value()):.0f} cm-1')
+        self.gui.ui.delayStagePreset1.setText(f'{np.polyval(self.delay_to_wavenumber, self.gui.ui.delayStagePresetWidget1.value()):.0f} cm-1')
+        self.gui.ui.delayStagePreset2.setText(f'{np.polyval(self.delay_to_wavenumber, self.gui.ui.delayStagePresetWidget2.value()):.0f} cm-1')
 
 def handle_exception(exc_type, exc_value, exc_traceback):
         ''' Prints error that crashed application. '''

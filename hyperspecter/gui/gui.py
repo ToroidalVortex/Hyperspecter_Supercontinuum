@@ -49,7 +49,7 @@ class HyperspecterGUI(QtWidgets.QMainWindow):
         # Update timer to periodically emit update signal
         self.timer = QtCore.QTimer(self)
         self.timer.setSingleShot(False)
-        self.timer.setInterval(2000) # in milliseconds, so n*1000 = n seconds
+        self.timer.setInterval(500) # in milliseconds
         self.timer.timeout.connect(lambda: self.signal.update.emit())
         self.timer.start()
 
@@ -85,6 +85,11 @@ class HyperspecterGUI(QtWidgets.QMainWindow):
         settings['step size'] = self.ui.stepSizeWidget.value()
         settings['pump power'] = self.ui.pumpPowerWidget.value()
         settings['stokes power'] = self.ui.stokesPowerWidget.value()
+        settings['delay presets'] = (self.ui.delayStagePresetWidget0.value(),self.ui.delayStagePresetWidget1.value(),self.ui.delayStagePresetWidget2.value())
+        settings['calibration'] = (self.ui.calibrationWidget0.value(),self.ui.calibrationWidget1.value(),self.ui.calibrationWidget2.value())
+        settings['polarization scan start'] = self.ui.polarizationScanStartWidget.value()
+        settings['polarization scan end'] = self.ui.polarizationScanEndWidget.value()
+        settings['polarization step size'] = self.ui.polarizationScanStepSizeWidget.value()
         return settings
 
     def setSettings(self, settings):

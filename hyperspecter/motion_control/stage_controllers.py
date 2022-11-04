@@ -79,11 +79,10 @@ if __name__ == '__main__':
     name = 'DDS220'
     serial_number = stages[name]['SN']
     hwtype = stages[name]['HW']
-    
     delay_stage = Stage(serial_number, hwtype, name=name, verbose=False)
     
     print(f'Position: {delay_stage.get_position()}')
     
-    delay_stage.move_abs(110)
+    delay_stage.move_abs(72.37)
     
     print(f'Position: {delay_stage.get_position()}')
