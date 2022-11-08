@@ -11,8 +11,9 @@ except:
     import FakePyDAQmx as pdmx
 
 
-class DigitalOutput:
 
+
+class DigitalOutput:
     def __init__(self, channel_name):
         ''' Set channel_name to the name of the digital output channel(s).  (e.g. "Dev1/port0/line0")
             Use the NI MAX software to configure and test channels.   
@@ -30,6 +31,9 @@ class DigitalOutput:
         except Exception as e:
             print(e)
             self.deviceLoaded = False
+
+    def __del__(self):
+        self.clear()
 
     def write(self, data, samples_per_channel=1, auto_start=1, timeout=10):
         ''' Writes data to the given digital output channel(s). data must be an array of n 8-bit unsigned integers,
@@ -54,20 +58,25 @@ class DigitalOutput:
         ''' Writes 0 (LOW) to digital output channel(s). '''
         self.write(np.array([0], dtype=np.uint8))
 
-    def close(self):
-        ''' Closes connection with current digital output channel. '''
+    def stop(self):
         if self.deviceLoaded:
             self.task.StopTask()
 
+    def clear(self):
+        ''' Closes connection with current digital output channel. '''
+        if self.task: self.task.ClearTask()
+        self.task = None
+        self.deviceLoaded = False
+
+
+
 
 class AnalogOutput:
-
     def __init__(self, channel_name, voltage_min=-10., voltage_max=10., clock_rate=2500000, mode='continuous', samples_per_channel=2048, source=None, trigger=None):
         ''' Maximum clock rate is 2.5 MHz for analog output channels. Samples per channel should be no more than 1/10 clock rate.
             Mode can be set to 'continuous' or 'finite'
         '''
         assert mode in ['continuous', 'finite']
-
         self.channel_name = channel_name
         self.number_of_channels = self.get_number_of_channels(self.channel_name)
         self.voltage_min = voltage_min
@@ -78,9 +87,11 @@ class AnalogOutput:
         self.source = source
         self.trigger = trigger
         self.task_started = False
-
         self.task = pdmx.Task()
         self.__configure_task()
+
+    def __del__(self):
+        self.clear()
     
     def __configure_task(self):
         ''' Configures the Task object. '''
@@ -118,7 +129,6 @@ class AnalogOutput:
                 They should be concatenated with np.concatenate((CH1,CH2)) as follows.
                     data = [x1, x2, x3, ..., xn, y1, y2, y3, ..., yn]
         '''
-        
         if not samples_per_channel:
             samples_per_channel = round(data.size/self.number_of_channels)
         else:
@@ -133,12 +143,7 @@ class AnalogOutput:
             sampsPerChanWritten=None,
             reserved=None
         )
-        
         self.start()
-
-    # def zero(self):
-    #     ''' Outputs zero. '''
-    #     self.task.WriteAnalogScalarF64(False,10,0.0,None)
 
     def start(self):
         ''' Preferred way to start the task. '''
@@ -151,16 +156,14 @@ class AnalogOutput:
         self.task.WaitUntilTaskDone(timeout)
 
     def stop(self):
-        ''' Preferred way to stop the task. '''
         if self.task_started:
-            # self.zero()
             self.task.StopTask()
             self.task_started = False
 
     def clear(self):
-        ''' Preferred way to clear the task. '''
-        if self.task_started: self.stop()
-        self.task.ClearTask()
+        if self.task: self.task.ClearTask()
+        self.task = None
+        self.task_started = False
 
     def get_number_of_channels(self, channel_name):
         ''' Returns the number of channels in the given analog channel name. 
@@ -190,13 +193,13 @@ class AnalogOutput:
         return number_of_channels
 
 
+
+
 class AnalogInput:
-    
     def __init__(self, channel_name, voltage_min=-10., voltage_max=10., clock_rate=5000000, mode='continuous', samples_per_channel=8192, source=None, trigger=None, offset=1):
         ''' Maximum clock rate is 5 MHz for analog output channels. Samples per channel should be no more than 1/10 clock rate.
         '''
-        assert mode in ['continuous', 'finite'], f'{mode} is not a valid mode.'
-
+        assert mode in ['continuous', 'finite']
         self.channel_name = channel_name
         self.number_of_channels = self.get_number_of_channels(self.channel_name)
         self.voltage_min = voltage_min
@@ -212,8 +215,10 @@ class AnalogInput:
         self.task = pdmx.Task()
         self.__configure_task()
 
+    def __del__(self):
+        self.clear()
+
     def __configure_task(self):
-        
         self.task.CreateAIVoltageChan(
             physicalChannel=self.channel_name, 
             nameToAssignToChannel='',
@@ -295,8 +300,9 @@ class AnalogInput:
 
     def clear(self):
         ''' Preferred way to clear the task. '''
-        if self.task_started: self.stop()
-        self.task.ClearTask()
+        if self.task: self.task.ClearTask()
+        self.task = None
+        self.task_started = False
 
     def get_number_of_channels(self, channel_name):
         ''' Returns the number of channels in the given analog channel name. 

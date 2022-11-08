@@ -81,6 +81,7 @@ class Hyperspecter:
 
         self.setup_signals()
         sys.exit(self.app.exec_())
+
     
     def setup_signals(self):
         self.gui.ui.acquireButton.clicked.connect(self.acquire_toggle)
@@ -100,6 +101,40 @@ class Hyperspecter:
         self.gui.ui.delayStagePresetButton1.clicked.connect(lambda: self.delay_stage.move_abs(self.gui.ui.delayStagePresetWidget1.value()))
         self.gui.ui.delayStagePresetButton2.clicked.connect(lambda: self.delay_stage.move_abs(self.gui.ui.delayStagePresetWidget2.value()))
 
+
+    def update(self):
+        ''' Update config based on gui settings. '''
+        # Update settings
+        self.settings = self.gui.getSettings()
+
+        # Update estimated scan times
+        scan_time = utils.estimate_imaging_time(
+            self.settings['scan start'],
+            self.settings['scan end'],
+            self.settings['step size'],
+            self.settings['line dwell time'] * self.settings['image resolution'] / 1000
+        )
+        self.gui.ui.estimatedScanTimeLabel.setText(f'Estimated Scan Time: {scan_time} seconds')
+
+        scan_time = utils.estimate_imaging_time(
+            self.settings['polarization scan start'],
+            self.settings['polarization scan end'],
+            self.settings['polarization step size'],
+            self.settings['line dwell time'] * self.settings['image resolution'] / 1000
+        )
+        self.gui.ui.estimatedPolarizationScanTimeLabel.setText(f'Estimated Scan Time: {scan_time} seconds')
+
+        # Update current delay stage position
+        delay_position = self.delay_stage.get_position()
+        wavenumber = np.polyval(self.delay_to_wavenumber, delay_position)
+        self.gui.ui.delayStagePosition.setText(f'{delay_position:.3f} mm ({wavenumber:.0f} cm-1)')
+
+        # Update preset values
+        self.gui.ui.delayStagePreset0.setText(f'{np.polyval(self.delay_to_wavenumber, self.gui.ui.delayStagePresetWidget0.value()):.0f} cm-1')
+        self.gui.ui.delayStagePreset1.setText(f'{np.polyval(self.delay_to_wavenumber, self.gui.ui.delayStagePresetWidget1.value()):.0f} cm-1')
+        self.gui.ui.delayStagePreset2.setText(f'{np.polyval(self.delay_to_wavenumber, self.gui.ui.delayStagePresetWidget2.value()):.0f} cm-1')
+
+
     def gui_closed(self):
         # Stop everything
         self.acquiring = False
@@ -109,19 +144,21 @@ class Hyperspecter:
             self.close_stokes_shutter()
             self.close_pump_shutter()
             self.close_microscope_shutter()
-
         # Quit application
         self.app.quit()
+
 
     def open_microscope_shutter(self):
         self.microscope_shutter.low()
         self.microscope_open = True
         self.gui.ui.microscopeStatus.setText('Microscope Shutter: Open')
 
+
     def close_microscope_shutter(self):
         self.microscope_shutter.high()
         self.microscope_open = False
         self.gui.ui.microscopeStatus.setText('Microscope Shutter: Closed')
+
 
     def open_pump_shutter(self):
         if mcc_loaded:
@@ -129,11 +166,13 @@ class Hyperspecter:
             self.pump_open = True
             self.gui.ui.pumpStatus.setText('Open')
 
+
     def close_pump_shutter(self):
         if mcc_loaded:
             self.MCC.set_digital_out(1, self.pump)
             self.pump_open = False
             self.gui.ui.pumpStatus.setText('Closed')
+
 
     def open_stokes_shutter(self):
         if mcc_loaded:
@@ -141,11 +180,13 @@ class Hyperspecter:
             self.stokes_open = True
             self.gui.ui.stokesStatus.setText('Open')
 
+
     def close_stokes_shutter(self):
         if mcc_loaded:
             self.MCC.set_digital_out(1, self.stokes)
             self.stokes_open = False
             self.gui.ui.stokesStatus.setText('Closed')
+
 
     def toggle_pump_shutter(self):
         if self.pump_open:
@@ -153,16 +194,19 @@ class Hyperspecter:
         else:
             self.open_pump_shutter()
 
+
     def toggle_stokes_shutter(self):
         if self.stokes_open:
             self.close_stokes_shutter()
         else:
             self.open_stokes_shutter()
-    
+
+
     def set_PMT_level(self, value, channel):
         self.PMT_levels[channel] = value/100 # divide by correction factor equal to slider max value
         if self.PMT_powered and mcc_loaded:
             self.MCC.set_analog_out(self.PMT_levels[channel], channel)
+
 
     def set_PMT_on(self):
         # turn on PMTs
@@ -172,6 +216,7 @@ class Hyperspecter:
             self.gui.ui.PMTStatus.setText('On')
             self.PMT_powered = True
 
+
     def set_PMT_off(self):
         # turn off PMTs
         if mcc_loaded:
@@ -180,11 +225,13 @@ class Hyperspecter:
             self.gui.ui.PMTStatus.setText('Off')
             self.PMT_powered = False
 
+
     def acquire_toggle(self):
         if not self.acquiring:
             self.acquire()
         elif self.acquiring:
             self.stop_acquire()
+
 
     def acquire(self):
         self.acquiring = True
@@ -236,13 +283,15 @@ class Hyperspecter:
             producer_thread.deamon = True
             producer_thread.start()
 
+
     def stop_acquire(self):
         self.microscope.stop()
         self.set_PMT_off()
         self.close_microscope_shutter()
         self.acquiring = False
         self.gui.ui.acquireButton.setText('Acquire')
-        
+
+
     def process_frames(self, image_q):
         while self.acquiring:
             frame = image_q.get()
@@ -266,15 +315,14 @@ class Hyperspecter:
             self.gui.updateImages(frame)
             self.gui.updateIntensityPlots(self.average_intensities)
 
-            
-
 
     def acquire_frame(self, image_q):
         ''' Acquires a single frame and adds it to the queue. '''
         frame = self.microscope.get_frame()
         image_q.put(frame)
         image_q.put(None) # add sentinel value
-    
+
+
     def acquire_scan(self, image_q):
         ''' Scan method that adds each frame in a scan to the image_q queue. '''
 
@@ -309,7 +357,8 @@ class Hyperspecter:
                     break
 
         image_q.put(None) # add sentinel value
-    
+
+
     def monitor(self, image_q):
         ''' Scan method that continuously adds frames to the image_q queue. '''
         while self.acquiring:
@@ -321,41 +370,10 @@ class Hyperspecter:
         
         image_q.put(None) # add sentinel value
 
+
     def clear_data(self):
         self.image_data = []
         self.average_intensities = [[] for _ in range(self.microscope.number_of_channels)]
-    
-    def update(self):
-        ''' Update config based on gui settings. '''
-        # Update settings
-        self.settings = self.gui.getSettings()
-
-        # Update estimated scan times
-        scan_time = utils.estimate_imaging_time(
-            self.settings['scan start'],
-            self.settings['scan end'],
-            self.settings['step size'],
-            self.settings['line dwell time'] * self.settings['image resolution'] / 1000
-        )
-        self.gui.ui.estimatedScanTimeLabel.setText(f'Estimated Scan Time: {scan_time} seconds')
-
-        scan_time = utils.estimate_imaging_time(
-            self.settings['polarization scan start'],
-            self.settings['polarization scan end'],
-            self.settings['polarization step size'],
-            self.settings['line dwell time'] * self.settings['image resolution'] / 1000
-        )
-        self.gui.ui.estimatedPolarizationScanTimeLabel.setText(f'Estimated Scan Time: {scan_time} seconds')
-
-        # Update current delay stage position
-        delay_position = self.delay_stage.get_position()
-        wavenumber = np.polyval(self.delay_to_wavenumber, delay_position)
-        self.gui.ui.delayStagePosition.setText(f'{delay_position:.3f} mm ({wavenumber:.0f} cm-1)')
-
-        # Update preset values
-        self.gui.ui.delayStagePreset0.setText(f'{np.polyval(self.delay_to_wavenumber, self.gui.ui.delayStagePresetWidget0.value()):.0f} cm-1')
-        self.gui.ui.delayStagePreset1.setText(f'{np.polyval(self.delay_to_wavenumber, self.gui.ui.delayStagePresetWidget1.value()):.0f} cm-1')
-        self.gui.ui.delayStagePreset2.setText(f'{np.polyval(self.delay_to_wavenumber, self.gui.ui.delayStagePresetWidget2.value()):.0f} cm-1')
 
 def handle_exception(exc_type, exc_value, exc_traceback):
         ''' Prints error that crashed application. '''

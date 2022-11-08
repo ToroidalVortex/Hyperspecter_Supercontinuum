@@ -304,7 +304,7 @@
        <double>0.100000000000000</double>
       </property>
       <property name="value">
-       <double>1.000000000000000</double>
+       <double>0.600000000000000</double>
       </property>
      </widget>
      <widget class="QSpinBox" name="flybackWidget">
@@ -323,7 +323,7 @@
        <number>100</number>
       </property>
       <property name="value">
-       <number>0</number>
+       <number>10</number>
       </property>
      </widget>
      <widget class="QLabel" name="galvoOffsetLabel">
@@ -352,7 +352,7 @@
        <number>1</number>
       </property>
       <property name="minimum">
-       <double>0.000000000000000</double>
+       <double>-10.000000000000000</double>
       </property>
       <property name="maximum">
        <double>10.000000000000000</double>
@@ -361,7 +361,7 @@
        <double>0.100000000000000</double>
       </property>
       <property name="value">
-       <double>0.000000000000000</double>
+       <double>-1.200000000000000</double>
       </property>
      </widget>
      <widget class="QPushButton" name="autoLevelButton">
@@ -596,7 +596,7 @@
        <number>100</number>
       </property>
       <property name="value">
-       <number>0</number>
+       <number>10</number>
       </property>
      </widget>
     </widget>
@@ -661,7 +661,7 @@
        <double>1.000000000000000</double>
       </property>
       <property name="value">
-       <double>1.000000000000000</double>
+       <double>10.000000000000000</double>
       </property>
      </widget>
      <widget class="QLabel" name="scanEndLabel">
@@ -1389,7 +1389,7 @@
      <double>2000.000000000000000</double>
     </property>
     <property name="value">
-     <double>30.000000000000000</double>
+     <double>0.000000000000000</double>
     </property>
    </widget>
    <widget class="QLabel" name="pumpPowerLabel">
@@ -1437,7 +1437,7 @@
      <double>2000.000000000000000</double>
     </property>
     <property name="value">
-     <double>15.000000000000000</double>
+     <double>0.000000000000000</double>
     </property>
    </widget>
    <widget class="QLabel" name="microscopeStatus">

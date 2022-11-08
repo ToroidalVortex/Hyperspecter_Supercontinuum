@@ -13,13 +13,12 @@ class HyperspecterGUI(QtWidgets.QMainWindow):
         close = QtCore.pyqtSignal()
         generate_delay_stage_positions = QtCore.pyqtSignal()
 
-    def __init__(self):
+    def __init__(self, channels=4):
         super().__init__()
-        
+        self.number_of_channels = channels
         self.signal = self.Signal()
-        self.display_panel = DisplayPanel(4, parent=self)
+        self.display_panel = DisplayPanel(self.number_of_channels, parent=self)
         self.acquiring = False
-        
         self.setupUI()
         self.setupSignals()
         
@@ -53,11 +52,11 @@ class HyperspecterGUI(QtWidgets.QMainWindow):
         self.timer.timeout.connect(lambda: self.signal.update.emit())
         self.timer.start()
 
-    def createDisplayPanel(self):
-        self.display_panel = DisplayPanel(2, self)
-
     def displayClosed(self):
         self.display_panel = None
+        
+    def createDisplayPanel(self):
+        self.display_panel = DisplayPanel(self.number_of_channels, parent=self)
 
     def updateImages(self, image_data, levels=None):
         self.display_panel.setImage(image_data, levels)
@@ -104,7 +103,6 @@ class HyperspecterGUI(QtWidgets.QMainWindow):
     def closeEvent(self, event):
         # close all windows
         self.signal.close.emit()
-        # if self.display_panel:  self.display_panel.close()
         event.accept()
 
 if __name__ == '__main__':

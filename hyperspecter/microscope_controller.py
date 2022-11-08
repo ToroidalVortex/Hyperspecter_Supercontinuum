@@ -45,9 +45,14 @@ class MicroscopeController:
         self.simulate = simulate
         self.number_of_channels = number_of_channels # number of channels to simulate
         self.acquiring = False
+        self.galvos = None
+        self.pmts = None
+
+    def __del__(self):
+        if self.galvos and self.galvos.task: self.galvos.clear()
+        if self.pmts and self.pmts.task: self.pmts.clear()
 
     def update_settings(self, settings):
-        assert not self.acquiring, 'Must stop acquiring to modify parameters.'
         self.resolution = settings['image resolution']
         self.line_dwell_time = settings['line dwell time']
         self.zoom = settings['zoom']
@@ -173,7 +178,6 @@ class MicroscopeController:
                 except KeyboardInterrupt:
                     self.acquiring = False
                     break
-
             self.galvos.stop()
             self.galvos.clear()
             self.pmts.stop()
@@ -201,6 +205,9 @@ class MicroscopeController:
         return np.array(frame)
 
     def stop(self):
+        # stop tasks
+        if self.galvos and self.galvos.task: self.galvos.clear()
+        if self.pmts and self.pmts.task: self.pmts.clear()
         self.acquiring = False
         
 
