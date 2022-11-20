@@ -62,7 +62,6 @@ class Hyperspecter:
         
         self.image_data = []
         self.average_intensities = [[] for _ in range(self.microscope.number_of_channels)]
-        # self.PMT_level = 0
         self.PMT_levels = [0,0,0,0]
         self.PMT_powered = False
         self.microscope_open = False
@@ -72,9 +71,10 @@ class Hyperspecter:
         
         self.microscope_shutter = ADIO.DigitalOutput("Dev1/port0/line7")
         if mcc_loaded:
-            self.MCC = mcc.MCCDev()
-            self.pump = 1
-            self.stokes = 2
+            self.mcc_model = '3101'
+            self.MCC = mcc.MCCDev(model=self.mcc_model)
+            self.pump = 1 # pump shutter channel
+            self.stokes = 2 # stokes shutter channel
             self.close_stokes_shutter()
             self.close_pump_shutter()
             self.close_microscope_shutter()
@@ -203,7 +203,9 @@ class Hyperspecter:
 
 
     def set_PMT_level(self, value, channel):
-        self.PMT_levels[channel] = value/100 # divide by correction factor equal to slider max value
+        voltage = value/100 # value is a percent of the maximum voltage (1V) 
+        assert 0 <= voltage < 1, 'PMT voltage must be between 0V and 1V.'
+        self.PMT_levels[channel] = voltage 
         if self.PMT_powered and mcc_loaded:
             self.MCC.set_analog_out(self.PMT_levels[channel], channel)
 

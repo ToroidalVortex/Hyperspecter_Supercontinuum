@@ -11,7 +11,8 @@ model_specs = {
         'channels' : 2,                 # 2 analog output channels
         'resolution' : 12,              # 12-bit resolution
         'range' : ULRange.UNI4VOLTS,    # 0V to 4V voltage range
-        'port type': DigitalPortType.FIRSTPORTA
+        'port type': DigitalPortType.FIRSTPORTA,
+        'max voltage': 4
     },
 
 
@@ -20,7 +21,8 @@ model_specs = {
         'channels' : 4,                 # 4 analog output channels
         'resolution' : 16,              # 16-bit resolution
         'range' : ULRange.UNI10VOLTS,   # 0V to 10V voltage range
-        'port type': DigitalPortType.AUXPORT
+        'port type': DigitalPortType.AUXPORT,
+        'max voltage': 10
     }
 
 }
@@ -45,13 +47,10 @@ class MCCDev:
         self.range = model_specs[model]['range']
         self.port_type = model_specs[model]['port type']
 
-    def set_analog_out(self, voltage:float=0, channel:int=0):
-        ''' Set voltage between 0 (min voltage) and 1 (max voltage) to the given channel. '''
-        assert 0 <= voltage <= 1, 'Oops! Voltage must be between 0 and 1'
+    def set_analog_out(self, voltage, channel):
+        ''' Sets analog output channel voltage. Voltage must be in the ULRange specified for the given device model. '''
         assert channel in range(self.number_of_channels), 'Invalid channel number.'
-        bits = 2**self.resolution
-        bit_voltage = math.floor(voltage * bits)
-        ul.a_out(self.board_num, channel, self.range, bit_voltage)
+        ul.v_out(self.board_num, channel, self.range, voltage)
 
     def set_digital_out(self, value, port):
         ul.d_config_port(self.board_num, self.port_type, DigitalIODirection.OUT)
