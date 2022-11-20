@@ -111,7 +111,7 @@ class Ui_Hyperspecter(object):
         self.galvoOffsetWidget.setMinimum(-10.0)
         self.galvoOffsetWidget.setMaximum(10.0)
         self.galvoOffsetWidget.setSingleStep(0.1)
-        self.galvoOffsetWidget.setProperty("value", -1.2)
+        self.galvoOffsetWidget.setProperty("value", 0.0)
         self.galvoOffsetWidget.setObjectName("galvoOffsetWidget")
         self.autoLevelButton = QtWidgets.QPushButton(self.tab)
         self.autoLevelButton.setGeometry(QtCore.QRect(190, 240, 171, 21))
