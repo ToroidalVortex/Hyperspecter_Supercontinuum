@@ -30,7 +30,7 @@ class DisplayPanel(pg.GraphicsLayoutWidget):
         
     __title  = "Hyperspecter - Display Panel"
 
-    def __init__(self, number_of_channels, channel_labels=None, parent=None):
+    def __init__(self, number_of_channels, channel_labels=['CARS', 'SHG', 'EPI-CARS', 'Back Scatter'], parent=None):
         ''' DisplayPanel displays a panel of microscope images where each column represents a different input channel.
             DisplayPanel inherits from the convenience class GraphicsLayoutWidget which combines a GraphicsView and GraphicsLayout.
 
@@ -48,8 +48,8 @@ class DisplayPanel(pg.GraphicsLayoutWidget):
         self.images = []
         self.plots = []
         self.image_levels = []
-        self.default_image_minimum = 0
-        self.default_image_maximum = 1
+        self.default_image_minimum = 0.0
+        self.default_image_maximum = 1.0
         self.image_data = None
 
         self.setupUI()
@@ -155,7 +155,8 @@ class DisplayPanel(pg.GraphicsLayoutWidget):
     def autoLevel(self):
         for channel, image in enumerate(self.images):
             try:
-                levels = image.quickMinMax(targetSize=10000)
+                img_levels = image.quickMinMax(targetSize=10000) # get image levels quickly
+                levels = (0.0, img_levels[1] * 1.1) # set max levels to image maximums giving 10% head room, keep min at 0 for absolute baseline
                 self.image_levels[channel] = levels
                 image.setLevels(levels)
                 print(f'Image {channel} autolevels: {levels}')

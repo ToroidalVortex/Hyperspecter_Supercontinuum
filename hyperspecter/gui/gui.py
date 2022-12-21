@@ -84,6 +84,7 @@ class HyperspecterGUI(QtWidgets.QMainWindow):
         settings['step size'] = self.ui.stepSizeWidget.value()
         settings['pump power'] = self.ui.pumpPowerWidget.value()
         settings['stokes power'] = self.ui.stokesPowerWidget.value()
+        settings['image levels'] = f'{self.display_panel.image_levels}'
         settings['delay presets'] = (self.ui.delayStagePresetWidget0.value(),self.ui.delayStagePresetWidget1.value(),self.ui.delayStagePresetWidget2.value())
         settings['calibration'] = (self.ui.calibrationWidget0.value(),self.ui.calibrationWidget1.value(),self.ui.calibrationWidget2.value())
         settings['polarization scan start'] = self.ui.polarizationScanStartWidget.value()
