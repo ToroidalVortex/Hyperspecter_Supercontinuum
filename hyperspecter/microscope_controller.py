@@ -205,10 +205,12 @@ class MicroscopeController:
         return np.array(frame)
 
     def stop(self):
-        # stop tasks
+        self.acquiring = False
+        time.sleep(0.25) # time to process last frame
+        
+        # stop tasks if still running
         if self.galvos and self.galvos.task: self.galvos.clear()
         if self.pmts and self.pmts.task: self.pmts.clear()
-        self.acquiring = False
         
 
 
