@@ -129,10 +129,15 @@ class Hyperspecter:
         wavenumber = np.polyval(self.delay_to_wavenumber, delay_position)
         self.gui.ui.delayStagePosition.setText(f'{delay_position:.3f} mm ({wavenumber:.0f} cm-1)')
 
-        # Update preset values
+        # Update preset values wavenumber calculations
         self.gui.ui.delayStagePreset0.setText(f'{np.polyval(self.delay_to_wavenumber, self.gui.ui.delayStagePresetWidget0.value()):.0f} cm-1')
         self.gui.ui.delayStagePreset1.setText(f'{np.polyval(self.delay_to_wavenumber, self.gui.ui.delayStagePresetWidget1.value()):.0f} cm-1')
         self.gui.ui.delayStagePreset2.setText(f'{np.polyval(self.delay_to_wavenumber, self.gui.ui.delayStagePresetWidget2.value()):.0f} cm-1')
+
+        # Update scan values wavenumber calculations
+        self.gui.ui.scanStartWavenumber.setText(f'{np.polyval(self.delay_to_wavenumber, self.gui.ui.scanStartWidget.value()):.0f} cm-1')
+        self.gui.ui.scanEndWavenumber.setText(f'{np.polyval(self.delay_to_wavenumber, self.gui.ui.scanEndWidget.value()):.0f} cm-1')
+        self.gui.ui.scanStepWavenumber.setText(f'{self.delay_to_wavenumber[0]*self.gui.ui.stepSizeWidget.value():.0f} cm-1')
 
 
     def gui_closed(self):
@@ -252,6 +257,9 @@ class Hyperspecter:
             
             # Save settings
             utils.save_settings(f'{self.save_directory}/settings.txt', self.settings)
+
+            # Create csv for average intensities
+            np.savetxt(f'{self.save_directory}/intensities.csv', [], delimiter=',', header='CH0,CH1,CH2,CH3')
         
         # Producer-consumer pattern for image processing
         image_q = Queue() # images are pushed as they are produced and pulled when they are ready to be processed
@@ -311,8 +319,15 @@ class Hyperspecter:
                 if self.settings['save']:
                     levels = self.gui.display_panel.image_levels[channel]
                     array = utils.convert_to_16_bit(array, levels[0], levels[1])
+                    array = np.flip(array, 0) # Fixes y axis flipping when saving
                     tf.imwrite(f'{self.save_directory}/CH{channel}.tiff', array, append=True, bigtiff=True)
             
+            if self.settings['save']:
+                average_intensities = np.array([np.mean(channel) for channel in frame])
+                with open(f'{self.save_directory}/intensities.csv', 'a') as file:
+                    # append average intensities to csv
+                    np.savetxt(file, [average_intensities], delimiter=',')
+
             # Display images
             self.gui.updateImages(frame)
             self.gui.updateIntensityPlots(self.average_intensities)
@@ -342,8 +357,7 @@ class Hyperspecter:
             if end < start:
                 step = -1*step
             
-            wavenumbers = np.arange(start, end+step, step)
-            delay_positions = np.polyval(self.wavenumber_to_delay, wavenumbers)
+            delay_positions = np.arange(start, end+step, step)
 
             ### initiate scan
             for position in delay_positions:
@@ -351,14 +365,16 @@ class Hyperspecter:
                     
                     ### set delay stage position
                     self.delay_stage.move_abs(position)
-
                     frame = self.microscope.get_frame()
                     image_q.put(frame)
+
+                    if not self.acquiring: break
 
                 except:
                     break
 
         image_q.put(None) # add sentinel value
+        print('scan finished')
 
 
     def monitor(self, image_q):
